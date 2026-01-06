@@ -3,8 +3,29 @@ local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Camera = workspace and workspace.CurrentCamera
+
+-- Aimbot runtime state (keeps original logic)
+local Locked = nil
+local Animation = nil
+local RequiredDistance = 2000
+local FOVAmount = 90
+local ThirdPerson = false
+local ThirdPersonSensitivity = 3
+local Sensitivity = 0
+local LockPart = "HumanoidRootPart"
+local FOVCircle = nil
+if Drawing and Drawing.new then
+    FOVCircle = Drawing.new("Circle")
+    FOVCircle.Visible = false
+    FOVCircle.Color = Color3.fromRGB(255,255,255)
+end
+
 local FreezeEnabled = false
 local ESPEnabled = false
+local AimbotEnabled = false
 local TracerEnabled = false
 local SavedPositions = {}
 local TPPositions = {}
@@ -122,10 +143,63 @@ end
 -- PVP Buttons
 local ESPBtn = createButton("ESP: OFF", PVPFrame)
 local TracerBtn = createButton("Tracers: OFF", PVPFrame)
-
+local AimbotBtn = createButton("Aimbot: OFF", PVPFrame)
 -- Troll Buttons
 local FreezeBtn = createButton("Freeze All: OFF", TrollFrame)
 local BringBtn = createButton("Bring All To Me", TrollFrame)
+
+local Highlights = {}
+
+local function applyHighlight(player)
+    if not player then return end
+    pcall(function()
+        local char = player.Character
+        if not char then return end
+        local existing = char:FindFirstChild("DeFlopperHighlight")
+        if existing then
+            Highlights[player] = existing
+            return
+        end
+        local hl = Instance.new("Highlight")
+        hl.Name = "DeFlopperHighlight"
+        hl.FillColor = Color3.fromRGB(255, 0, 0)
+        hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+        hl.Parent = char
+        Highlights[player] = hl
+    end)
+end
+
+local function removeHighlight(player)
+    if not player then return end
+    pcall(function()
+        if Highlights[player] and Highlights[player].Parent then
+            Highlights[player]:Destroy()
+        else
+            local ch = player.Character
+            if ch then
+                local h = ch:FindFirstChild("DeFlopperHighlight")
+                if h then h:Destroy() end
+            end
+        end
+        Highlights[player] = nil
+    end)
+end
+
+-- Ensure highlights persist across respawns and new players
+Players.PlayerAdded:Connect(function(plr)
+    plr.CharacterAdded:Connect(function()
+        if ESPEnabled then applyHighlight(plr) end
+    end)
+    if ESPEnabled and plr.Character then applyHighlight(plr) end
+end)
+
+-- Attach CharacterAdded handlers for players already in-game
+for _, plr in ipairs(Players:GetPlayers()) do
+    plr.CharacterAdded:Connect(function()
+        if ESPEnabled then applyHighlight(plr) end
+    end)
+    if ESPEnabled and plr.Character then applyHighlight(plr) end
+end
 
 -- ===== TAB BUTTON LOGIC =====
 PVPTabBtn.MouseButton1Click:Connect(function()
@@ -155,6 +229,15 @@ ESPBtn.MouseButton1Click:Connect(function()
     ESPEnabled = not ESPEnabled
     ESPBtn.Text = ESPEnabled and "ESP: ON" or "ESP: OFF"
     ESPBtn.BackgroundColor3 = ESPEnabled and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(50, 50, 50)
+    if ESPEnabled then
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer then applyHighlight(plr) end
+        end
+    else
+        for plr, _ in pairs(Highlights) do
+            removeHighlight(plr)
+        end
+    end
 end)
 
 BringBtn.MouseButton1Click:Connect(function()
@@ -181,12 +264,16 @@ TracerBtn.MouseButton1Click:Connect(function()
     TracerBtn.BackgroundColor3 = TracerEnabled and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(50, 50, 50)
 end)
 
-
+AimbotBtn.MouseButton1Click:Connect(function()
+    AimbotEnabled = not AimbotEnabled
+    AimbotBtn.Text = AimbotEnabled and "Aimbot: ON" or "Aimbot: OFF"
+    AimbotBtn.BackgroundColor3 = AimbotEnabled and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(50, 50, 50)
+end)
 
 
 -- ===== MAIN LOOPS =====
 RunService.RenderStepped:Connect(function()
-    for _, player in ipairs(Players:GetPlayers()) do
+        for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character then
             local root = player.Character:FindFirstChild("HumanoidRootPart")
             local hum = player.Character:FindFirstChild("Humanoid")
@@ -209,15 +296,9 @@ RunService.RenderStepped:Connect(function()
             end
 
             if ESPEnabled then
-                if not player.Character:FindFirstChild("DeFlopperHighlight") then
-                    local hl = Instance.new("Highlight", player.Character)
-                    hl.Name = "DeFlopperHighlight"
-                    hl.FillColor = Color3.fromRGB(255, 0, 0)
-                    hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-                end
+                applyHighlight(player)
             else
-                local hl = player.Character:FindFirstChild("DeFlopperHighlight")
-                if hl then hl:Destroy() end
+                removeHighlight(player)
             end
         end
     end
@@ -247,6 +328,69 @@ RunService.RenderStepped:Connect(function()
         for _, line in pairs(Tracers) do line:Remove() end
         Tracers = {}
     end
+
+    if AimbotEnabled then
+        -- Use original locking logic: find closest player inside FOV and lock onto them.
+        local mousePos = UserInputService:GetMouseLocation()
+
+        if not Locked then
+            if FOVAmount then RequiredDistance = FOVAmount else RequiredDistance = 2000 end
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild(LockPart) and plr.Character:FindFirstChildOfClass("Humanoid") then
+                    if plr.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
+                        local partPos = plr.Character[LockPart].Position
+                        local vector, onScreen = Camera:WorldToViewportPoint(partPos)
+                        local dist = (Vector2.new(mousePos.X, mousePos.Y) - Vector2.new(vector.X, vector.Y)).Magnitude
+                        if dist < RequiredDistance and onScreen then
+                            RequiredDistance = dist
+                            Locked = plr
+                        end
+                    end
+                end
+            end
+        else
+            -- If locked, check if still inside the allowed distance; otherwise unlock
+            if Locked and Locked.Character and Locked.Character:FindFirstChild(LockPart) then
+                local vec = Camera:WorldToViewportPoint(Locked.Character[LockPart].Position)
+                local d = (Vector2.new(mousePos.X, mousePos.Y) - Vector2.new(vec.X, vec.Y)).Magnitude
+                if d > RequiredDistance then
+                    Locked = nil
+                    if Animation and Animation.Cancel then pcall(function() Animation:Cancel() end) end
+                    if FOVCircle then FOVCircle.Color = Color3.fromRGB(255,255,255) end
+                end
+            else
+                Locked = nil
+            end
+        end
+
+        -- If we have a lock, aim at the target using either mousemoverel (3rd person) or camera CFrame
+        if Locked and Locked.Character and Locked.Character:FindFirstChild(LockPart) then
+            local targetPos = Locked.Character[LockPart].Position
+            if ThirdPerson then
+                ThirdPersonSensitivity = math.clamp(ThirdPersonSensitivity, 0.1, 5)
+                local vec = Camera:WorldToViewportPoint(targetPos)
+                pcall(function()
+                    mousemoverel((vec.X - mousePos.X) * ThirdPersonSensitivity, (vec.Y - mousePos.Y) * ThirdPersonSensitivity)
+                end)
+            else
+                if Sensitivity and Sensitivity > 0 then
+                    if Animation and Animation.Cancel then pcall(function() Animation:Cancel() end) end
+                    Animation = TweenService:Create(Camera, TweenInfo.new(Sensitivity, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {CFrame = CFrame.new(Camera.CFrame.Position, targetPos)})
+                    pcall(function() Animation:Play() end)
+                else
+                    pcall(function() Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPos) end)
+                end
+            end
+            if FOVCircle then 
+                FOVCircle.Color = Color3.fromRGB(255,70,70)
+                FOVCircle.Visible = true
+                FOVCircle.Radius = FOVAmount
+                FOVCircle.Position = Vector2.new(mousePos.X, mousePos.Y)
+            end
+        else
+            if FOVCircle then FOVCircle.Visible = false end
+        end
+    end
 end)
 
 -- ===== CLOSE BUTTON =====
@@ -264,4 +408,5 @@ end)
 Players.PlayerRemoving:Connect(function(player)
     SavedPositions[player] = nil
     TPPositions[player] = nil
+    removeHighlight(player)
 end)
