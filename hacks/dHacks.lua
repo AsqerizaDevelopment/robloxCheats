@@ -15,8 +15,10 @@ local FOVAmount = 90
 local ThirdPerson = false
 local ThirdPersonSensitivity = 3
 local Sensitivity = 0
-local LockPart = "HumanoidRootPart"
+local LockPart = "Head"
 local FOVCircle = nil
+local AimOnShoot = false
+local Shooting = false
 if Drawing and Drawing.new then
     FOVCircle = Drawing.new("Circle")
     FOVCircle.Visible = false
@@ -36,6 +38,17 @@ local Highlights = {}
 local function safe(fn)
     local ok, res = pcall(fn)
     return ok, res
+end
+-- mouse helper for detecting when the player is firing (aim-on-shoot)
+local mouse = nil
+pcall(function()
+    if LocalPlayer then
+        mouse = LocalPlayer:GetMouse()
+    end
+end)
+if mouse then
+    mouse.Button1Down:Connect(function() Shooting = true end)
+    mouse.Button1Up:Connect(function() Shooting = false end)
 end
 
 -- Cleanup highlight utilities
@@ -295,6 +308,58 @@ local function showPVP()
         AimbotEnabled = state
     end)
 
+    createToggle("Aim On Shoot", AimOnShoot, sec2, function(state)
+        AimOnShoot = state
+    end)
+
+    -- Aim part selection (Head / Body)
+    local partRow = Instance.new("Frame")
+    partRow.Size = UDim2.new(1, -12, 0, 28)
+    partRow.BackgroundTransparency = 1
+    partRow.LayoutOrder = 2
+    partRow.Parent = sec2
+
+    local partLabel = Instance.new("TextLabel")
+    partLabel.Size = UDim2.new(0.6, 0, 1, 0)
+    partLabel.Position = UDim2.new(0, 4, 0, 0)
+    partLabel.BackgroundTransparency = 1
+    partLabel.Font = Enum.Font.Gotham
+    partLabel.Text = "Aim Part: " .. (LockPart == "Head" and "Head" or "Body")
+    partLabel.TextSize = 12
+    partLabel.TextColor3 = Color3.fromRGB(200,200,200)
+    partLabel.TextXAlignment = Enum.TextXAlignment.Left
+    partLabel.Parent = partRow
+
+    local headBtn = Instance.new("TextButton")
+    headBtn.Size = UDim2.new(0, 60, 0, 20)
+    headBtn.Position = UDim2.new(1, -140, 0, 4)
+    headBtn.BackgroundColor3 = (LockPart == "Head") and Color3.fromRGB(0,150,0) or Color3.fromRGB(60,60,60)
+    headBtn.Text = "Head"
+    headBtn.Font = Enum.Font.GothamBold
+    headBtn.TextSize = 12
+    headBtn.TextColor3 = Color3.fromRGB(255,255,255)
+    headBtn.Parent = partRow
+    Instance.new("UICorner", headBtn).CornerRadius = UDim.new(0,4)
+
+    local bodyBtn = headBtn:Clone()
+    bodyBtn.Position = UDim2.new(1, -82, 0, 4)
+    bodyBtn.Text = "Body"
+    bodyBtn.BackgroundColor3 = (LockPart == "HumanoidRootPart") and Color3.fromRGB(0,150,0) or Color3.fromRGB(60,60,60)
+    bodyBtn.Parent = partRow
+
+    headBtn.MouseButton1Click:Connect(function()
+        LockPart = "Head"
+        partLabel.Text = "Aim Part: Head"
+        headBtn.BackgroundColor3 = Color3.fromRGB(0,150,0)
+        bodyBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+    end)
+    bodyBtn.MouseButton1Click:Connect(function()
+        LockPart = "HumanoidRootPart"
+        partLabel.Text = "Aim Part: Body"
+        bodyBtn.BackgroundColor3 = Color3.fromRGB(0,150,0)
+        headBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+    end)
+
     -- FOV and Sensitivity small controls (responsive row)
     local fovRow = Instance.new("Frame")
     fovRow.Size = UDim2.new(1, -12, 0, 28)
@@ -479,62 +544,68 @@ RunService.RenderStepped:Connect(function()
 
     -- Aimbot logic preserved
     if AimbotEnabled then
-        local mousePos = UserInputService:GetMouseLocation()
+        -- If Aim-On-Shoot is enabled and we're not shooting, don't do any aiming
+        if AimOnShoot and not Shooting then
+            Locked = nil
+            if FOVCircle then FOVCircle.Visible = false end
+        else
+            local mousePos = UserInputService:GetMouseLocation()
 
-        if not Locked then
-            if FOVAmount then RequiredDistance = FOVAmount else RequiredDistance = 2000 end
-            for _, plr in ipairs(Players:GetPlayers()) do
-                if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild(LockPart) and plr.Character:FindFirstChildOfClass("Humanoid") then
-                    if plr.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
-                        local partPos = plr.Character[LockPart].Position
-                        local vector, onScreen = Camera:WorldToViewportPoint(partPos)
-                        local dist = (Vector2.new(mousePos.X, mousePos.Y) - Vector2.new(vector.X, vector.Y)).Magnitude
-                        if dist < RequiredDistance and onScreen then
-                            RequiredDistance = dist
-                            Locked = plr
+            if not Locked then
+                if FOVAmount then RequiredDistance = FOVAmount else RequiredDistance = 2000 end
+                for _, plr in ipairs(Players:GetPlayers()) do
+                    if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild(LockPart) and plr.Character:FindFirstChildOfClass("Humanoid") then
+                        if plr.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
+                            local partPos = plr.Character[LockPart].Position
+                            local vector, onScreen = Camera:WorldToViewportPoint(partPos)
+                            local dist = (Vector2.new(mousePos.X, mousePos.Y) - Vector2.new(vector.X, vector.Y)).Magnitude
+                            if dist < RequiredDistance and onScreen then
+                                RequiredDistance = dist
+                                Locked = plr
+                            end
                         end
                     end
                 end
-            end
-        else
-            if Locked and Locked.Character and Locked.Character:FindFirstChild(LockPart) then
-                local vec = Camera:WorldToViewportPoint(Locked.Character[LockPart].Position)
-                local d = (Vector2.new(mousePos.X, mousePos.Y) - Vector2.new(vec.X, vec.Y)).Magnitude
-                if d > RequiredDistance then
-                    Locked = nil
-                    if Animation and Animation.Cancel then pcall(function() Animation:Cancel() end) end
-                    if FOVCircle then FOVCircle.Color = Color3.fromRGB(255,255,255) end
-                end
             else
-                Locked = nil
-            end
-        end
-
-        if Locked and Locked.Character and Locked.Character:FindFirstChild(LockPart) then
-            local targetPos = Locked.Character[LockPart].Position
-            if ThirdPerson then
-                ThirdPersonSensitivity = math.clamp(ThirdPersonSensitivity, 0.1, 5)
-                local vec = Camera:WorldToViewportPoint(targetPos)
-                pcall(function()
-                    mousemoverel((vec.X - mousePos.X) * ThirdPersonSensitivity, (vec.Y - mousePos.Y) * ThirdPersonSensitivity)
-                end)
-            else
-                if Sensitivity and Sensitivity > 0 then
-                    if Animation and Animation.Cancel then pcall(function() Animation:Cancel() end) end
-                    Animation = TweenService:Create(Camera, TweenInfo.new(Sensitivity, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {CFrame = CFrame.new(Camera.CFrame.Position, targetPos)})
-                    pcall(function() Animation:Play() end)
+                if Locked and Locked.Character and Locked.Character:FindFirstChild(LockPart) then
+                    local vec = Camera:WorldToViewportPoint(Locked.Character[LockPart].Position)
+                    local d = (Vector2.new(mousePos.X, mousePos.Y) - Vector2.new(vec.X, vec.Y)).Magnitude
+                    if d > RequiredDistance then
+                        Locked = nil
+                        if Animation and Animation.Cancel then pcall(function() Animation:Cancel() end) end
+                        if FOVCircle then FOVCircle.Color = Color3.fromRGB(255,255,255) end
+                    end
                 else
-                    pcall(function() Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPos) end)
+                    Locked = nil
                 end
             end
-            if FOVCircle then 
-                FOVCircle.Color = Color3.fromRGB(255,70,70)
-                FOVCircle.Visible = true
-                FOVCircle.Radius = FOVAmount
-                FOVCircle.Position = Vector2.new(mousePos.X, mousePos.Y)
+
+            if Locked and Locked.Character and Locked.Character:FindFirstChild(LockPart) then
+                local targetPos = Locked.Character[LockPart].Position
+                if ThirdPerson then
+                    ThirdPersonSensitivity = math.clamp(ThirdPersonSensitivity, 0.1, 5)
+                    local vec = Camera:WorldToViewportPoint(targetPos)
+                    pcall(function()
+                        mousemoverel((vec.X - mousePos.X) * ThirdPersonSensitivity, (vec.Y - mousePos.Y) * ThirdPersonSensitivity)
+                    end)
+                else
+                    if Sensitivity and Sensitivity > 0 then
+                        if Animation and Animation.Cancel then pcall(function() Animation:Cancel() end) end
+                        Animation = TweenService:Create(Camera, TweenInfo.new(Sensitivity, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {CFrame = CFrame.new(Camera.CFrame.Position, targetPos)})
+                        pcall(function() Animation:Play() end)
+                    else
+                        pcall(function() Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPos) end)
+                    end
+                end
+                if FOVCircle then 
+                    FOVCircle.Color = Color3.fromRGB(255,70,70)
+                    FOVCircle.Visible = true
+                    FOVCircle.Radius = FOVAmount
+                    FOVCircle.Position = Vector2.new(mousePos.X, mousePos.Y)
+                end
+            else
+                if FOVCircle then FOVCircle.Visible = false end
             end
-        else
-            if FOVCircle then FOVCircle.Visible = false end
         end
     end
 end)
