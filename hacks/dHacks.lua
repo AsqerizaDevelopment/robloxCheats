@@ -30,129 +30,18 @@ local TracerEnabled = false
 local SavedPositions = {}
 local TPPositions = {}
 local Tracers = {}
-
--- ===== SCREEN GUI =====
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "DeFlopperCheatGUI"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = CoreGui
-
--- ===== MAIN FRAME =====
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 300, 0, 400)
-MainFrame.Position = UDim2.new(0, 50, 0, 50)
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-MainFrame.BorderSizePixel = 0
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.Parent = ScreenGui
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
-
--- ===== TITLE BAR =====
-local TitleBar = Instance.new("Frame")
-TitleBar.Size = UDim2.new(1, 0, 0, 40)
-TitleBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-TitleBar.Parent = MainFrame
-
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -50, 1, 0)
-Title.Position = UDim2.new(0, 10, 0, 0)
-Title.BackgroundTransparency = 1
-Title.Text = "DeFlopper Cheat Settings"
-Title.Font = Enum.Font.SourceSansBold
-Title.TextSize = 18
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.Parent = TitleBar
-
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0, 40, 1, -5)
-CloseBtn.Position = UDim2.new(1, -45, 0, 3)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-CloseBtn.BorderSizePixel = 0
-CloseBtn.Text = "X"
-CloseBtn.Font = Enum.Font.SourceSansBold
-CloseBtn.TextSize = 18
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.Parent = TitleBar
-Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 6)
-
--- ===== TAB BUTTONS =====
-local TabBar = Instance.new("Frame")
-TabBar.Size = UDim2.new(1, 0, 0, 40)
-TabBar.Position = UDim2.new(0, 0, 0, 40)
-TabBar.BackgroundTransparency = 1
-TabBar.Parent = MainFrame
-
-local function createTabButton(name, xPos)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 140, 1, -5)
-    btn.Position = UDim2.new(0, xPos, 0, 2)
-    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    btn.BorderSizePixel = 0
-    btn.Text = name
-    btn.Font = Enum.Font.SourceSans
-    btn.TextSize = 16
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Parent = TabBar
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-    return btn
-end
-
-local PVPTabBtn = createTabButton("PVP", 5)
-local TrollTabBtn = createTabButton("Troll", 155)
-
--- ===== TAB CONTENT FRAMES =====
-local function createTabFrame()
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, -20, 1, -90)
-    frame.Position = UDim2.new(0, 10, 0, 85)
-    frame.BackgroundTransparency = 1
-    frame.Visible = false
-    frame.Parent = MainFrame
-
-    local UIList = Instance.new("UIListLayout")
-    UIList.Parent = frame
-    UIList.SortOrder = Enum.SortOrder.LayoutOrder
-    UIList.Padding = UDim.new(0, 10)
-    UIList.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    UIList.FillDirection = Enum.FillDirection.Vertical
-
-    return frame
-end
-
-local PVPFrame = createTabFrame()
-local TrollFrame = createTabFrame()
-PVPFrame.Visible = true
-
--- ===== BUTTON CREATION =====
-local function createButton(text, parent)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -20, 0, 35)
-    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    btn.BorderSizePixel = 0
-    btn.Text = text
-    btn.Font = Enum.Font.SourceSans
-    btn.TextSize = 16
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Parent = parent
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-    return btn
-end
-
--- PVP Buttons
-local ESPBtn = createButton("ESP: OFF", PVPFrame)
-local TracerBtn = createButton("Tracers: OFF", PVPFrame)
-local AimbotBtn = createButton("Aimbot: OFF", PVPFrame)
--- Troll Buttons
-local FreezeBtn = createButton("Freeze All: OFF", TrollFrame)
-local BringBtn = createButton("Bring All To Me", TrollFrame)
-
 local Highlights = {}
 
+-- Helper: safe pcall wrapper
+local function safe(fn)
+    local ok, res = pcall(fn)
+    return ok, res
+end
+
+-- Cleanup highlight utilities
 local function applyHighlight(player)
     if not player then return end
-    pcall(function()
+    safe(function()
         local char = player.Character
         if not char then return end
         local existing = char:FindFirstChild("DeFlopperHighlight")
@@ -171,7 +60,7 @@ end
 
 local function removeHighlight(player)
     if not player then return end
-    pcall(function()
+    safe(function()
         if Highlights[player] and Highlights[player].Parent then
             Highlights[player]:Destroy()
         else
@@ -185,15 +74,13 @@ local function removeHighlight(player)
     end)
 end
 
--- Ensure highlights persist across respawns and new players
+-- Ensure highlights persist across joins/respawns
 Players.PlayerAdded:Connect(function(plr)
     plr.CharacterAdded:Connect(function()
         if ESPEnabled then applyHighlight(plr) end
     end)
     if ESPEnabled and plr.Character then applyHighlight(plr) end
 end)
-
--- Attach CharacterAdded handlers for players already in-game
 for _, plr in ipairs(Players:GetPlayers()) do
     plr.CharacterAdded:Connect(function()
         if ESPEnabled then applyHighlight(plr) end
@@ -201,79 +88,339 @@ for _, plr in ipairs(Players:GetPlayers()) do
     if ESPEnabled and plr.Character then applyHighlight(plr) end
 end
 
--- ===== TAB BUTTON LOGIC =====
-PVPTabBtn.MouseButton1Click:Connect(function()
-    PVPFrame.Visible = true
-    TrollFrame.Visible = false
-end)
+-- ===== UI: clean, readable layout =====
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "DeFlopperCheatGUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = CoreGui
 
-TrollTabBtn.MouseButton1Click:Connect(function()
-    PVPFrame.Visible = false
-    TrollFrame.Visible = true
-end)
+local Window = Instance.new("Frame")
+Window.Size = UDim2.new(0, 420, 0, 360)
+Window.Position = UDim2.new(0, 60, 0, 60)
+Window.BackgroundColor3 = Color3.fromRGB(24,24,24)
+Window.BorderSizePixel = 0
+Window.Active = true
+Window.Draggable = true
+Window.Parent = ScreenGui
+Instance.new("UICorner", Window).CornerRadius = UDim.new(0, 10)
 
+-- Header
+local Header = Instance.new("Frame")
+Header.Size = UDim2.new(1, 0, 0, 48)
+Header.BackgroundColor3 = Color3.fromRGB(32,32,32)
+Header.Parent = Window
+Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 8)
 
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -90, 1, 0)
+Title.Position = UDim2.new(0, 16, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "DeFlopper — Clean UI"
+Title.Font = Enum.Font.GothamSemibold
+Title.TextSize = 20
+Title.TextColor3 = Color3.fromRGB(240,240,240)
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = Header
 
--- ===== BUTTON LOGIC =====
-FreezeBtn.MouseButton1Click:Connect(function()
-    FreezeEnabled = not FreezeEnabled
-    if not FreezeEnabled then
-        SavedPositions = {}
-        TPPositions = {}
-    end
-    FreezeBtn.Text = FreezeEnabled and "Freeze All: ON" or "Freeze All: OFF"
-    FreezeBtn.BackgroundColor3 = FreezeEnabled and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(50, 50, 50)
-end)
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 64, 0, 28)
+CloseBtn.Position = UDim2.new(1, -78, 0, 10)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(196, 40, 28)
+CloseBtn.BorderSizePixel = 0
+CloseBtn.Text = "Close"
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.TextSize = 14
+CloseBtn.TextColor3 = Color3.fromRGB(255,255,255)
+CloseBtn.Parent = Header
+Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0,6)
 
-ESPBtn.MouseButton1Click:Connect(function()
-    ESPEnabled = not ESPEnabled
-    ESPBtn.Text = ESPEnabled and "ESP: ON" or "ESP: OFF"
-    ESPBtn.BackgroundColor3 = ESPEnabled and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(50, 50, 50)
-    if ESPEnabled then
-        for _, plr in ipairs(Players:GetPlayers()) do
-            if plr ~= LocalPlayer then applyHighlight(plr) end
-        end
-    else
-        for plr, _ in pairs(Highlights) do
-            removeHighlight(plr)
-        end
-    end
-end)
+-- Layout: Sidebar + Content
+local Sidebar = Instance.new("Frame")
+Sidebar.Size = UDim2.new(0, 120, 1, -64)
+Sidebar.Position = UDim2.new(0, 12, 0, 56)
+Sidebar.BackgroundTransparency = 1
+Sidebar.Parent = Window
 
-BringBtn.MouseButton1Click:Connect(function()
-    if not FreezeEnabled then
-        BringBtn.Text = "Enable Freeze First"
-        task.wait(1)
-        BringBtn.Text = "Bring All To Me"
-        return
-    end
-    local char = LocalPlayer.Character
-    if char and char:FindFirstChild("HumanoidRootPart") then
-        local tpPos = char.HumanoidRootPart.CFrame * CFrame.new(0, 0, -5)
-        for player, _ in pairs(SavedPositions) do
-            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                TPPositions[player] = tpPos
+local Content = Instance.new("Frame")
+Content.Size = UDim2.new(1, -156, 1, -64)
+Content.Position = UDim2.new(0, 140, 0, 56)
+Content.BackgroundTransparency = 1
+Content.Parent = Window
+
+local function createSidebarButton(text)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 0, 40)
+    btn.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    btn.BorderSizePixel = 0
+    btn.Text = text
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 14
+    btn.TextColor3 = Color3.fromRGB(220,220,220)
+    btn.Parent = Sidebar
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)
+    btn.LayoutOrder = 1
+    return btn
+end
+
+local PVPBtn = createSidebarButton("PVP")
+local TrollBtn = createSidebarButton("Troll")
+
+-- Sidebar layout so buttons stack instead of overlapping
+local SidebarList = Instance.new("UIListLayout")
+SidebarList.Parent = Sidebar
+SidebarList.SortOrder = Enum.SortOrder.LayoutOrder
+SidebarList.Padding = UDim.new(0, 6)
+
+-- Tab selection helper
+local function selectTab(selected)
+    for _, v in ipairs(Sidebar:GetChildren()) do
+        if v:IsA("TextButton") then
+            if v == selected then
+                v.BackgroundColor3 = Color3.fromRGB(60,120,60)
+            else
+                v.BackgroundColor3 = Color3.fromRGB(40,40,40)
             end
         end
     end
+end
+
+local function clearContent()
+    for _, c in pairs(Content:GetChildren()) do
+        if not (c:IsA("UIListLayout") or c:IsA("UIPadding")) then
+            c:Destroy()
+        end
+    end
+end
+
+local UIList = Instance.new("UIListLayout")
+UIList.Parent = Content
+UIList.SortOrder = Enum.SortOrder.LayoutOrder
+UIList.Padding = UDim.new(0, 10)
+
+local function createSection(title)
+    local sec = Instance.new("Frame")
+    sec.Size = UDim2.new(1, -12, 0, 0)
+    sec.AutomaticSize = Enum.AutomaticSize.Y
+    sec.BackgroundColor3 = Color3.fromRGB(28,28,28)
+    sec.BorderSizePixel = 0
+    sec.Parent = Content
+    Instance.new("UICorner", sec).CornerRadius = UDim.new(0,6)
+
+    local padding = Instance.new("UIPadding")
+    padding.PaddingTop = UDim.new(0,8)
+    padding.PaddingLeft = UDim.new(0,8)
+    padding.Parent = sec
+
+    local layout = Instance.new("UIListLayout")
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Padding = UDim.new(0,6)
+    layout.Parent = sec
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, -12, 0, 20)
+    lbl.BackgroundTransparency = 1
+    lbl.Font = Enum.Font.GothamSemibold
+    lbl.Text = title
+    lbl.TextColor3 = Color3.fromRGB(230,230,230)
+    lbl.TextSize = 14
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.LayoutOrder = 1
+    lbl.Parent = sec
+
+    return sec
+end
+
+-- Reusable toggle widget
+local function createToggle(text, initial, parent, onToggle)
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(1, -12, 0, 36)
+    container.BackgroundTransparency = 1
+    container.Parent = parent
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0.7, 0, 1, 0)
+    label.Position = UDim2.new(0, 8, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.Gotham
+    label.Text = text
+    label.TextSize = 14
+    label.TextColor3 = Color3.fromRGB(230,230,230)
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = container
+
+    local toggle = Instance.new("TextButton")
+    toggle.Size = UDim2.new(0, 72, 0, 28)
+    toggle.Position = UDim2.new(1, -84, 0, 4)
+    toggle.BackgroundColor3 = initial and Color3.fromRGB(0,150,0) or Color3.fromRGB(60,60,60)
+    toggle.BorderSizePixel = 0
+    toggle.Text = initial and "ON" or "OFF"
+    toggle.Font = Enum.Font.GothamBold
+    toggle.TextSize = 12
+    toggle.TextColor3 = Color3.fromRGB(255,255,255)
+    toggle.Parent = container
+    Instance.new("UICorner", toggle).CornerRadius = UDim.new(0,6)
+
+    toggle.MouseButton1Click:Connect(function()
+        local new = not initial
+        initial = new
+        toggle.BackgroundColor3 = new and Color3.fromRGB(0,150,0) or Color3.fromRGB(60,60,60)
+        toggle.Text = new and "ON" or "OFF"
+        pcall(function() onToggle(new, toggle) end)
+    end)
+
+    return container, toggle
+end
+
+-- Build default PVP content
+local function showPVP()
+    clearContent()
+    local sec1 = createSection("Player Aids")
+    createToggle("ESP", ESPEnabled, sec1, function(state)
+        ESPEnabled = state
+        if ESPEnabled then
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr ~= LocalPlayer then applyHighlight(plr) end
+            end
+        else
+            for plr, _ in pairs(Highlights) do removeHighlight(plr) end
+        end
+    end)
+
+    createToggle("Tracers", TracerEnabled, sec1, function(state)
+        TracerEnabled = state
+    end)
+
+    local sec2 = createSection("Aimbot")
+    createToggle("Aimbot", AimbotEnabled, sec2, function(state)
+        AimbotEnabled = state
+    end)
+
+    -- FOV and Sensitivity small controls (responsive row)
+    local fovRow = Instance.new("Frame")
+    fovRow.Size = UDim2.new(1, -12, 0, 28)
+    fovRow.BackgroundTransparency = 1
+    fovRow.LayoutOrder = 2
+    fovRow.Parent = sec2
+
+    local fovLabel = Instance.new("TextLabel")
+    fovLabel.Size = UDim2.new(0.6, 0, 1, 0)
+    fovLabel.Position = UDim2.new(0, 4, 0, 0)
+    fovLabel.BackgroundTransparency = 1
+    fovLabel.Font = Enum.Font.Gotham
+    fovLabel.Text = "FOV: " .. tostring(FOVAmount)
+    fovLabel.TextSize = 12
+    fovLabel.TextColor3 = Color3.fromRGB(200,200,200)
+    fovLabel.TextXAlignment = Enum.TextXAlignment.Left
+    fovLabel.Parent = fovRow
+
+    local fovInc = Instance.new("TextButton")
+    fovInc.Size = UDim2.new(0, 28, 0, 20)
+    fovInc.Position = UDim2.new(1, -44, 0, 4)
+    fovInc.BackgroundColor3 = Color3.fromRGB(60,60,60)
+    fovInc.Text = "+"
+    fovInc.Font = Enum.Font.GothamBold
+    fovInc.TextSize = 14
+    fovInc.TextColor3 = Color3.fromRGB(255,255,255)
+    fovInc.Parent = fovRow
+    Instance.new("UICorner", fovInc).CornerRadius = UDim.new(0,4)
+
+    local fovDec = fovInc:Clone()
+    fovDec.Position = UDim2.new(1, -80, 0, 4)
+    fovDec.Text = "-"
+    fovDec.Parent = fovRow
+
+    fovInc.MouseButton1Click:Connect(function()
+        FOVAmount = math.clamp(FOVAmount + 5, 10, 1000)
+        fovLabel.Text = "FOV: " .. tostring(FOVAmount)
+    end)
+    fovDec.MouseButton1Click:Connect(function()
+        FOVAmount = math.clamp(FOVAmount - 5, 10, 1000)
+        fovLabel.Text = "FOV: " .. tostring(FOVAmount)
+    end)
+end
+
+local function showTroll()
+    clearContent()
+    local sec1 = createSection("World Control")
+    createToggle("Freeze All", FreezeEnabled, sec1, function(state)
+        FreezeEnabled = state
+        if not FreezeEnabled then
+            SavedPositions = {}
+            TPPositions = {}
+        end
+    end)
+
+    local bringBtn = Instance.new("TextButton")
+    bringBtn.Size = UDim2.new(1, -12, 0, 32)
+    bringBtn.BackgroundColor3 = Color3.fromRGB(70,70,70)
+    bringBtn.BorderSizePixel = 0
+    bringBtn.Text = "Bring All To Me"
+    bringBtn.Font = Enum.Font.GothamBold
+    bringBtn.TextSize = 14
+    bringBtn.TextColor3 = Color3.fromRGB(255,255,255)
+    bringBtn.Parent = sec1
+    bringBtn.LayoutOrder = 2
+    Instance.new("UICorner", bringBtn).CornerRadius = UDim.new(0,6)
+
+    bringBtn.MouseButton1Click:Connect(function()
+        if not FreezeEnabled then
+            bringBtn.Text = "Enable Freeze First"
+            task.wait(1)
+            bringBtn.Text = "Bring All To Me"
+            return
+        end
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local tpPos = char.HumanoidRootPart.CFrame * CFrame.new(0, 0, -5)
+            for player, _ in pairs(SavedPositions) do
+                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    TPPositions[player] = tpPos
+                end
+            end
+        end
+    end)
+end
+
+-- Sidebar switching
+PVPBtn.MouseButton1Click:Connect(function()
+    selectTab(PVPBtn)
+    showPVP()
+end)
+TrollBtn.MouseButton1Click:Connect(function()
+    selectTab(TrollBtn)
+    showTroll()
+end)
+-- default
+selectTab(PVPBtn)
+showPVP()
+
+-- Close behavior: cleanup highlights, tracers and GUI
+CloseBtn.MouseButton1Click:Connect(function()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Character then
+            local hl = player.Character:FindFirstChild("DeFlopperHighlight")
+            if hl then hl:Destroy() end
+        end
+    end
+    for _, line in pairs(Tracers) do
+        safe(function() line:Remove() end)
+    end
+    Tracers = {}
+    if FOVCircle then
+        pcall(function() FOVCircle.Visible = false end)
+    end
+    ScreenGui:Destroy()
 end)
 
-TracerBtn.MouseButton1Click:Connect(function()
-    TracerEnabled = not TracerEnabled
-    TracerBtn.Text = TracerEnabled and "Tracers: ON" or "Tracers: OFF"
-    TracerBtn.BackgroundColor3 = TracerEnabled and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(50, 50, 50)
+Players.PlayerRemoving:Connect(function(player)
+    SavedPositions[player] = nil
+    TPPositions[player] = nil
+    removeHighlight(player)
 end)
 
-AimbotBtn.MouseButton1Click:Connect(function()
-    AimbotEnabled = not AimbotEnabled
-    AimbotBtn.Text = AimbotEnabled and "Aimbot: ON" or "Aimbot: OFF"
-    AimbotBtn.BackgroundColor3 = AimbotEnabled and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(50, 50, 50)
-end)
-
-
--- ===== MAIN LOOPS =====
+-- Main runtime loop preserved from original file (keeps features intact)
 RunService.RenderStepped:Connect(function()
-        for _, player in ipairs(Players:GetPlayers()) do
+    for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character then
             local root = player.Character:FindFirstChild("HumanoidRootPart")
             local hum = player.Character:FindFirstChild("Humanoid")
@@ -303,8 +450,9 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
+    -- Tracers
     if TracerEnabled then
-        for _, line in pairs(Tracers) do line:Remove() end
+        for _, line in pairs(Tracers) do safe(function() line:Remove() end) end
         Tracers = {}
         local LocalChar = LocalPlayer.Character
         if not LocalChar or not LocalChar:FindFirstChild("HumanoidRootPart") then return end
@@ -325,12 +473,12 @@ RunService.RenderStepped:Connect(function()
             end
         end
     else
-        for _, line in pairs(Tracers) do line:Remove() end
+        for _, line in pairs(Tracers) do safe(function() line:Remove() end) end
         Tracers = {}
     end
 
+    -- Aimbot logic preserved
     if AimbotEnabled then
-        -- Use original locking logic: find closest player inside FOV and lock onto them.
         local mousePos = UserInputService:GetMouseLocation()
 
         if not Locked then
@@ -349,7 +497,6 @@ RunService.RenderStepped:Connect(function()
                 end
             end
         else
-            -- If locked, check if still inside the allowed distance; otherwise unlock
             if Locked and Locked.Character and Locked.Character:FindFirstChild(LockPart) then
                 local vec = Camera:WorldToViewportPoint(Locked.Character[LockPart].Position)
                 local d = (Vector2.new(mousePos.X, mousePos.Y) - Vector2.new(vec.X, vec.Y)).Magnitude
@@ -363,7 +510,6 @@ RunService.RenderStepped:Connect(function()
             end
         end
 
-        -- If we have a lock, aim at the target using either mousemoverel (3rd person) or camera CFrame
         if Locked and Locked.Character and Locked.Character:FindFirstChild(LockPart) then
             local targetPos = Locked.Character[LockPart].Position
             if ThirdPerson then
@@ -391,22 +537,4 @@ RunService.RenderStepped:Connect(function()
             if FOVCircle then FOVCircle.Visible = false end
         end
     end
-end)
-
--- ===== CLOSE BUTTON =====
-CloseBtn.MouseButton1Click:Connect(function()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player.Character then
-            local hl = player.Character:FindFirstChild("DeFlopperHighlight")
-            if hl then hl:Destroy() end
-        end
-    end
-    for _, line in pairs(Tracers) do line:Remove() end
-    ScreenGui:Destroy()
-end)
-
-Players.PlayerRemoving:Connect(function(player)
-    SavedPositions[player] = nil
-    TPPositions[player] = nil
-    removeHighlight(player)
 end)
