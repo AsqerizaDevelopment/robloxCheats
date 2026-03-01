@@ -27,9 +27,6 @@ local Theme = {
 	White = Color3.fromRGB(245, 245, 255),
 }
 
-local CURSOR_ARROW = "rbxasset://SystemCursors/Arrow"
-local CURSOR_HAND = "rbxasset://SystemCursors/PointingHand"
-
 local function mk(instType, props, children)
 	local inst = Instance.new(instType)
 	for k, v in pairs(props or {}) do inst[k] = v end
@@ -72,15 +69,6 @@ local function tween(obj, t, goal, style, dir)
 	local tw = TweenService:Create(obj, ti, goal)
 	tw:Play()
 	return tw
-end
-
-local function hoverCursor(btn)
-	btn.MouseEnter:Connect(function()
-		mouse.Icon = CURSOR_HAND
-	end)
-	btn.MouseLeave:Connect(function()
-		mouse.Icon = CURSOR_ARROW
-	end)
 end
 
 local gui = mk("ScreenGui", {
@@ -173,7 +161,6 @@ local closeBtn = mk("TextButton", {
 closeBtn.Parent = topbar
 corner(12).Parent = closeBtn
 stroke(1, Theme.Stroke, 0.45).Parent = closeBtn
-hoverCursor(closeBtn)
 
 local body = mk("Frame", {
 	Name = "Body",
@@ -240,11 +227,9 @@ local function tabButton(text, icon)
 
 	btn.MouseEnter:Connect(function()
 		tween(btn, 0.16, { BackgroundColor3 = Color3.fromRGB(26, 26, 38) })
-		mouse.Icon = CURSOR_HAND
 	end)
 	btn.MouseLeave:Connect(function()
 		tween(btn, 0.16, { BackgroundColor3 = Color3.fromRGB(20, 20, 30) })
-		mouse.Icon = CURSOR_ARROW
 	end)
 
 	return btn
@@ -362,7 +347,6 @@ local function toggle(parent, labelText, defaultOn, onChanged)
 	pill.Parent = row
 	corner(999).Parent = pill
 	stroke(1, Theme.Stroke, 0.6).Parent = pill
-	hoverCursor(pill)
 
 	local knob = mk("Frame", {
 		BackgroundColor3 = Theme.Text,
@@ -438,7 +422,6 @@ local function slider(parent, labelText, min, max, defaultValue, onChanged)
 	track.Parent = wrap
 	corner(999).Parent = track
 	stroke(1, Theme.Stroke, 0.65).Parent = track
-	hoverCursor(track)
 
 	local fill = mk("Frame", {
 		BackgroundColor3 = Theme.Purple,
@@ -516,7 +499,6 @@ local function button(parent, text, onClick)
 	btn.Parent = parent
 	corner(14).Parent = btn
 	stroke(1, Theme.Purple, 0.25).Parent = btn
-	hoverCursor(btn)
 
 	btn.MouseEnter:Connect(function()
 		tween(btn, 0.16, { BackgroundColor3 = Theme.Purple })
@@ -797,18 +779,6 @@ local menuOpen = true
 local prevMouseIconEnabled = UserInputService.MouseIconEnabled
 local prevMouseBehavior = UserInputService.MouseBehavior
 
-local function applyMouseForMenu(isOpen)
-	if isOpen then
-		UserInputService.MouseIconEnabled = true
-		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-		mouse.Icon = CURSOR_ARROW
-	else
-		UserInputService.MouseIconEnabled = prevMouseIconEnabled
-		UserInputService.MouseBehavior = prevMouseBehavior
-		mouse.Icon = CURSOR_ARROW
-	end
-end
-
 local function openMenu()
 	menuOpen = true
 	dim.Visible = true
@@ -817,7 +787,6 @@ local function openMenu()
 	window.Size = UDim2.fromOffset(680, 390)
 	tween(dim, 0.18, { BackgroundTransparency = 0.25 })
 	tween(window, 0.22, { BackgroundTransparency = 0, Size = UDim2.fromOffset(720, 430) })
-	applyMouseForMenu(true)
 end
 
 local function closeMenu()
@@ -827,7 +796,6 @@ local function closeMenu()
 	task.delay(0.2, function()
 		if not menuOpen then
 			dim.Visible = false
-			applyMouseForMenu(false)
 		end
 	end)
 end
@@ -850,4 +818,3 @@ end)
 window.BackgroundTransparency = 1
 window.Size = UDim2.fromOffset(680, 390)
 tween(window, 0.22, { BackgroundTransparency = 0, Size = UDim2.fromOffset(720, 430) })
-applyMouseForMenu(true)
