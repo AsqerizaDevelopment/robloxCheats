@@ -14,6 +14,8 @@ local ENEMY_OUTLINE = Color3.fromRGB(255,255,255)
 local TEAM_FILL = Color3.fromRGB(0,170,255)
 local TEAM_OUTLINE = Color3.fromRGB(255,255,255)
 
+print("Wallhacks module loaded")
+
 local function isAlive(char)
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     return hum and hum.Health > 0
