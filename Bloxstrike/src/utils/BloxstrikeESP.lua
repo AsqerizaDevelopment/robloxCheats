@@ -19,11 +19,27 @@ local function isAlive(char)
     return hum and hum.Health > 0
 end
 
+local function getTeamId(p)
+    if p.Team ~= nil then return p.Team end
+    if p.TeamColor ~= nil then return p.TeamColor end
+
+    local attr = p:GetAttribute("Team")
+    if attr ~= nil then return attr end
+
+    local attr2 = p:GetAttribute("TeamId")
+    if attr2 ~= nil then return attr2 end
+
+    local val = p:FindFirstChild("Team")
+    if val and val.Value ~= nil then return val.Value end
+
+    return nil
+end
+
 local function isTeammate(p)
-    print("Checking teammate for", p.Name)
-    print("LocalPlayer.Team:", LocalPlayer.Team)
-    print("Player's Team:", p.Team)
-    return LocalPlayer.Team ~= nil and p.Team == LocalPlayer.Team
+    local my = getTeamId(LocalPlayer)
+    local other = getTeamId(p)
+    if my == nil or other == nil then return false end
+    return my == other
 end
 
 local function addESP(p, character)
@@ -144,9 +160,7 @@ RunService.RenderStepped:Connect(function()
                 end
             else
                 local line = ESP._tracers[p]
-                if line then
-                    line.Visible = false
-                end
+                if line then line.Visible = false end
             end
         end
     end
