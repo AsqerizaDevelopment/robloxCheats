@@ -1,6 +1,6 @@
 -- require utils
 
-local ESP = require(script.Parent.utils.BloxstrikeESP)
+local ESP = _G.Bloxstrike.utils.ESP
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")

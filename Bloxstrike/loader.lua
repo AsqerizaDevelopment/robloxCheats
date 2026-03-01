@@ -1,10 +1,12 @@
-local Bloxstrike = {}
-local baseURL = "https://raw.githubusercontent.com/AsqerizaDevelopment/robloxCheats/main/Bloxstrike/src/"
+local base = "https://raw.githubusercontent.com/AsqerizaDevelopment/robloxCheats/main/Bloxstrike/src/"
 
-local ESP = loadstring(game:HttpGet(baseURL .. "utils/BloxstrikeESP.lua"))()
-local UI = loadstring(game:HttpGet(baseURL .. "BloxstrikeUI.lua"))(ESP)
+_G.Bloxstrike = {}
 
-Bloxstrike.utils = { ESP = ESP }
-Bloxstrike.UI = UI
+_G.Bloxstrike.utils = {
+    ESP = loadstring(game:HttpGet(base.."utils/BloxstrikeESP.lua", true))(),
+    -- add more utils here later
+}
 
-return Bloxstrike
+_G.Bloxstrike.UI = loadstring(game:HttpGet(base.."BloxstrikeUI.lua", true))()
+
+return _G.Bloxstrike
