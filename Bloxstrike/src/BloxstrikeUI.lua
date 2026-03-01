@@ -1,3 +1,7 @@
+-- require utils
+
+local ESP = require(script.Parent.utils.BloxstrikeESP)
+
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -663,6 +667,14 @@ do
 	local layoutA = listlayout(Enum.FillDirection.Vertical, 10)
 	layoutA.Parent = cheatsBox
 
+	toggle(cheatsBox, "Wallhack", false, function(v)
+    	ESP:Set(v)
+	end)
+
+	toggle(cheatsBox, "Tracers", false, function(v)
+		ESP:SetTracers(v)
+	end)
+
 	local bottom = mk("Frame", {
 		BackgroundTransparency = 1,
 		Size = UDim2.new(1, 0, 0, 44),
@@ -708,12 +720,14 @@ button(injectWrap, "ENABLE", function()
 end)
 
 button(deactWrap, "DISABLE", function()
-	setEnabledUI(statusTextLabel, liveDot, false)
-	title.Text = "Disabled"
-	tween(title, 0.12, { TextColor3 = Theme.Purple })
-	task.delay(0.35, function()
-		tween(title, 0.18, { TextColor3 = Theme.Text })
-	end)
+    ESP:Set(false)
+    ESP:SetTracers(false)
+    setEnabledUI(statusTextLabel, liveDot, false)
+    title.Text = "Disabled"
+    tween(title, 0.12, { TextColor3 = Theme.Purple })
+    task.delay(0.35, function()
+        tween(title, 0.18, { TextColor3 = Theme.Text })
+    end)
 end)
 end
 
