@@ -82,10 +82,20 @@ RunService.RenderStepped:Connect(function()
 end)
 
 Players.PlayerAdded:Connect(function(p)
-    p.CharacterAdded:Connect(function(char)
-        addESP(char)
-        if ESP._tracerEnabled then createTracer(p) end
-    end)
+    local function onChar(char)
+        if ESP._enabled then
+            addESP(char)
+        end
+        if ESP._tracerEnabled then
+            createTracer(p)
+        end
+    end
+
+    if p.Character then
+        onChar(p.Character)
+    end
+
+    p.CharacterAdded:Connect(onChar)
 end)
 
 for _,p in ipairs(Players:GetPlayers()) do
@@ -94,5 +104,17 @@ for _,p in ipairs(Players:GetPlayers()) do
         addESP(char)
     end)
 end
+
+RunService.RenderStepped:Connect(function()
+    if ESP._enabled then
+        for _,p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character then
+                if not p.Character:FindFirstChild("ESP") then
+                    addESP(p.Character)
+                end
+            end
+        end
+    end
+end)
 
 return ESP
