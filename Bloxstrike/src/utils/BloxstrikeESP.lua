@@ -14,34 +14,27 @@ local ENEMY_OUTLINE = Color3.fromRGB(255,255,255)
 local TEAM_FILL = Color3.fromRGB(0,170,255)
 local TEAM_OUTLINE = Color3.fromRGB(255,255,255)
 
-print("Wallhacks module loaded")
-
 local function isAlive(char)
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     return hum and hum.Health > 0
 end
 
 local function getTeamId(p)
-    if p.Team ~= nil then return p.Team end
-    if p.TeamColor ~= nil then return p.TeamColor end
-
+    if p.Team then return p.Team end
+    if p.TeamColor then return p.TeamColor end
     local attr = p:GetAttribute("Team")
-    if attr ~= nil then return attr end
-
+    if attr then return attr end
     local attr2 = p:GetAttribute("TeamId")
-    if attr2 ~= nil then return attr2 end
-
+    if attr2 then return attr2 end
     local val = p:FindFirstChild("Team")
-    if val and val.Value ~= nil then return val.Value end
-
+    if val and val.Value then return val.Value end
     return nil
 end
 
 local function isTeammate(p)
     local my = getTeamId(LocalPlayer)
     local other = getTeamId(p)
-    print(my, other)
-    if my == nil or other == nil then return false end
+    if not my or not other then return false end
     return my == other
 end
 
@@ -74,7 +67,11 @@ local function addESP(p, character)
     else
         h.FillTransparency = 1
         h.OutlineTransparency = 0
-        h.OutlineColor = ENEMY_OUTLINE
+        if teammate then
+            h.OutlineColor = TEAM_OUTLINE
+        else
+            h.OutlineColor = ENEMY_OUTLINE
+        end
     end
 end
 
@@ -88,7 +85,11 @@ function ESP:Set(state)
     self._enabled = state
     for _,p in ipairs(Players:GetPlayers()) do
         if p.Character then
-            if state then addESP(p, p.Character) else removeESP(p.Character) end
+            if state then
+                addESP(p, p.Character)
+            else
+                removeESP(p.Character)
+            end
         end
     end
 end
@@ -103,6 +104,7 @@ end
 
 local function createTracer(p)
     if p == LocalPlayer then return end
+    if ESP._tracers[p] then return end
     local line = Drawing.new("Line")
     line.Thickness = 1
     line.Visible = false
@@ -126,12 +128,12 @@ RunService.RenderStepped:Connect(function()
 
             if char ~= ESP._lastChar[p] then
                 ESP._lastChar[p] = char
-                if ESP._enabled then
+                if ESP._enabled and char then
                     addESP(p, char)
                 end
                 if ESP._tracerEnabled then
                     removeTracer(p)
-                    createTracer(p)
+                    if char then createTracer(p) end
                 end
             end
 
@@ -139,8 +141,9 @@ RunService.RenderStepped:Connect(function()
                 addESP(p, char)
             end
 
+            local line = ESP._tracers[p]
+
             if ESP._tracerEnabled and char and isAlive(char) and char:FindFirstChild("HumanoidRootPart") then
-                local line = ESP._tracers[p]
                 if not line then
                     createTracer(p)
                     line = ESP._tracers[p]
@@ -162,23 +165,42 @@ RunService.RenderStepped:Connect(function()
                     line.Visible = false
                 end
             else
-                local line = ESP._tracers[p]
-                if line then line.Visible = false end
+                if line then
+                    line.Visible = false
+                end
             end
         end
     end
 end)
 
 Players.PlayerAdded:Connect(function(p)
-    if ESP._tracerEnabled then
-        createTracer(p)
-    end
+    p.CharacterAdded:Connect(function(char)
+        if ESP._enabled then
+            addESP(p, char)
+        end
+        if ESP._tracerEnabled then
+            removeTracer(p)
+            createTracer(p)
+        end
+    end)
 end)
 
 for _,p in ipairs(Players:GetPlayers()) do
+    p.CharacterAdded:Connect(function(char)
+        if ESP._enabled then
+            addESP(p, char)
+        end
+        if ESP._tracerEnabled then
+            removeTracer(p)
+            createTracer(p)
+        end
+    end)
     if ESP._tracerEnabled then
         createTracer(p)
     end
 end
+
+ESP:Set(true)
+ESP:SetTracers(true)
 
 return ESP
