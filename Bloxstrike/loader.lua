@@ -1,39 +1,43 @@
 local base = "https://raw.githubusercontent.com/AsqerizaDevelopment/robloxCheats/main/Bloxstrike/src/"
 
-_G.Bloxstrike = {}
+_G.Bloxstrike = _G.Bloxstrike or {}
+_G.Bloxstrike.utils = _G.Bloxstrike.utils or {}
 
 print("=== BLOXSTRIKE LOADER START ===")
 
--- load ESP
 do
-    local src = game:HttpGet(base.."utils/BloxstrikeESP.lua", true)
+    print("Loading ESP...")
+    local src = game:HttpGet(base.."utils/BloxstrikeESP.lua")
     local fn, err = loadstring(src)
 
-    print("ESP loadstring:", fn, err)
-
-    if fn then
-        _G.Bloxstrike.utils = {
-            ESP = fn()
-        }
-        print("ESP loaded OK")
-    else
+    if not fn then
         warn("ESP compile error:", err)
+    else
+        local ok, result = pcall(fn)
+        if ok and result then
+            _G.Bloxstrike.utils.ESP = result
+            print("ESP loaded OK")
+        else
+            warn("ESP runtime error:", result)
+        end
     end
 end
 
--- load UI
 do
-    local src = game:HttpGet(base.."BloxstrikeUI.lua", true)
+    print("Loading UI...")
+    local src = game:HttpGet(base.."BloxstrikeUI.lua")
     local fn, err = loadstring(src)
 
-    print("UI loadstring:", fn, err)
-
-    if fn then
-        print("Calling UI...")
-        _G.Bloxstrike.UI = fn(_G.Bloxstrike)
-        print("UI loaded OK")
-    else
+    if not fn then
         warn("UI compile error:", err)
+    else
+        local ok, result = pcall(fn, _G.Bloxstrike)
+        if ok then
+            _G.Bloxstrike.UI = result
+            print("UI loaded OK")
+        else
+            warn("UI runtime error:", result)
+        end
     end
 end
 
