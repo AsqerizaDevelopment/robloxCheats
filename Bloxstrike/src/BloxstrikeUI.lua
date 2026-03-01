@@ -1,5 +1,5 @@
 -- require utils
-
+print("_G.Bloxstrike:", _G.Bloxstrike)
 local ESP = _G.Bloxstrike.utils.ESP
 
 local Players = game:GetService("Players")
