@@ -765,16 +765,6 @@ local menuOpen = true
 local prevMouseIconEnabled = UserInputService.MouseIconEnabled
 local prevMouseBehavior = UserInputService.MouseBehavior
 
-local function applyMouseForMenu(isOpen)
-	if isOpen then
-		UserInputService.MouseIconEnabled = true
-		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-	else
-		UserInputService.MouseIconEnabled = prevMouseIconEnabled
-		UserInputService.MouseBehavior = prevMouseBehavior
-	end
-end
-
 local function openMenu()
 	menuOpen = true
 	dim.Visible = true
@@ -783,7 +773,6 @@ local function openMenu()
 	window.Size = UDim2.fromOffset(680, 390)
 	tween(dim, 0.18, { BackgroundTransparency = 0.25 })
 	tween(window, 0.22, { BackgroundTransparency = 0, Size = UDim2.fromOffset(720, 430) })
-	applyMouseForMenu(true)
 end
 
 local function closeMenu()
@@ -793,7 +782,6 @@ local function closeMenu()
 	task.delay(0.2, function()
 		if not menuOpen then
 			dim.Visible = false
-			applyMouseForMenu(false)
 		end
 	end)
 end
@@ -816,4 +804,3 @@ end)
 window.BackgroundTransparency = 1
 window.Size = UDim2.fromOffset(680, 390)
 tween(window, 0.22, { BackgroundTransparency = 0, Size = UDim2.fromOffset(720, 430) })
-applyMouseForMenu(true)
