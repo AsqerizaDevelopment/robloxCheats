@@ -52,12 +52,12 @@ end
 
 local function createTracer(p)
     if p == LocalPlayer then return end
-    if ESP._tracers[p] then return end
 
     local line = Drawing.new("Line")
     line.Thickness = 1
     line.Color = Color3.fromRGB(255,0,0)
     line.Visible = false
+
     ESP._tracers[p] = line
 end
 
@@ -77,25 +77,37 @@ RunService.RenderStepped:Connect(function()
         if p ~= LocalPlayer then
             local char = p.Character
 
+            -- ✅ CHARACTER REPLACE DETECTIE (RONDE FIX)
             if char ~= ESP._lastChar[p] then
                 ESP._lastChar[p] = char
+
                 if ESP._enabled then
                     addESP(char)
                 end
+
+                -- 🔧 TRACER RESET BIJ NIEUWE RONDE
+                if ESP._tracerEnabled then
+                    removeTracer(p)
+                    createTracer(p)
+                end
             end
 
+            -- ✅ ESP WATCHDOG
             if ESP._enabled and char and not char:FindFirstChild("ESP") then
                 addESP(char)
             end
 
+            -- ✅ TRACER WATCHDOG + UPDATE
             if ESP._tracerEnabled and char and char:FindFirstChild("HumanoidRootPart") then
-                local pos, visible = Camera:WorldToViewportPoint(char.HumanoidRootPart.Position)
                 local line = ESP._tracers[p]
 
+                -- tracer kwijt → opnieuw maken
                 if not line then
                     createTracer(p)
                     line = ESP._tracers[p]
                 end
+
+                local pos, visible = Camera:WorldToViewportPoint(char.HumanoidRootPart.Position)
 
                 if visible then
                     line.From = origin
