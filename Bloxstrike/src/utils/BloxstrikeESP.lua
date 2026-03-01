@@ -40,6 +40,7 @@ end
 local function isTeammate(p)
     local my = getTeamId(LocalPlayer)
     local other = getTeamId(p)
+    print(my, other)
     if my == nil or other == nil then return false end
     return my == other
 end
