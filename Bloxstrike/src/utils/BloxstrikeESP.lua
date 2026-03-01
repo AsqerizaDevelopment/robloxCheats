@@ -20,6 +20,9 @@ local function isAlive(char)
 end
 
 local function isTeammate(p)
+    print("Checking teammate for", p.Name)
+    print("LocalPlayer.Team:", LocalPlayer.Team)
+    print("Player's Team:", p.Team)
     return LocalPlayer.Team ~= nil and p.Team == LocalPlayer.Team
 end
 
