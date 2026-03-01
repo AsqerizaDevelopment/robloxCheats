@@ -9,21 +9,50 @@ local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
-local function addESP(character)
+local ENEMY_FILL = Color3.fromRGB(255,0,0)
+local ENEMY_OUTLINE = Color3.fromRGB(255,255,255)
+local TEAM_FILL = Color3.fromRGB(0,170,255)
+local TEAM_OUTLINE = Color3.fromRGB(255,255,255)
+
+local function isAlive(char)
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    return hum and hum.Health > 0
+end
+
+local function isTeammate(p)
+    return LocalPlayer.Team ~= nil and p.Team == LocalPlayer.Team
+end
+
+local function addESP(p, character)
     if not ESP._enabled then return end
     if not character then return end
-    if Players:GetPlayerFromCharacter(character) == LocalPlayer then return end
+    if p == LocalPlayer then return end
 
     local h = character:FindFirstChild("ESP")
     if not h then
         h = Instance.new("Highlight")
         h.Name = "ESP"
-        h.FillColor = Color3.fromRGB(255,0,0)
-        h.OutlineColor = Color3.fromRGB(255,255,255)
         h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
         h.Parent = character
-    elseif h.Parent ~= character then
-        h.Parent = character
+    end
+
+    local alive = isAlive(character)
+    local teammate = isTeammate(p)
+
+    if alive then
+        if teammate then
+            h.FillColor = TEAM_FILL
+            h.OutlineColor = TEAM_OUTLINE
+        else
+            h.FillColor = ENEMY_FILL
+            h.OutlineColor = ENEMY_OUTLINE
+        end
+        h.FillTransparency = 0.5
+        h.OutlineTransparency = 0
+    else
+        h.FillTransparency = 1
+        h.OutlineTransparency = 0
+        h.OutlineColor = ENEMY_OUTLINE
     end
 end
 
@@ -37,7 +66,7 @@ function ESP:Set(state)
     self._enabled = state
     for _,p in ipairs(Players:GetPlayers()) do
         if p.Character then
-            if state then addESP(p.Character) else removeESP(p.Character) end
+            if state then addESP(p, p.Character) else removeESP(p.Character) end
         end
     end
 end
@@ -52,12 +81,9 @@ end
 
 local function createTracer(p)
     if p == LocalPlayer then return end
-
     local line = Drawing.new("Line")
     line.Thickness = 1
-    line.Color = Color3.fromRGB(255,0,0)
     line.Visible = false
-
     ESP._tracers[p] = line
 end
 
@@ -70,41 +96,38 @@ function ESP:SetTracers(state)
 end
 
 RunService.RenderStepped:Connect(function()
-
     local origin = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y)
 
     for _,p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer then
             local char = p.Character
 
-            -- ✅ CHARACTER REPLACE DETECTIE (RONDE FIX)
             if char ~= ESP._lastChar[p] then
                 ESP._lastChar[p] = char
-
                 if ESP._enabled then
-                    addESP(char)
+                    addESP(p, char)
                 end
-
-                -- 🔧 TRACER RESET BIJ NIEUWE RONDE
                 if ESP._tracerEnabled then
                     removeTracer(p)
                     createTracer(p)
                 end
             end
 
-            -- ✅ ESP WATCHDOG
-            if ESP._enabled and char and not char:FindFirstChild("ESP") then
-                addESP(char)
+            if ESP._enabled and char then
+                addESP(p, char)
             end
 
-            -- ✅ TRACER WATCHDOG + UPDATE
-            if ESP._tracerEnabled and char and char:FindFirstChild("HumanoidRootPart") then
+            if ESP._tracerEnabled and char and isAlive(char) and char:FindFirstChild("HumanoidRootPart") then
                 local line = ESP._tracers[p]
-
-                -- tracer kwijt → opnieuw maken
                 if not line then
                     createTracer(p)
                     line = ESP._tracers[p]
+                end
+
+                if isTeammate(p) then
+                    line.Color = TEAM_FILL
+                else
+                    line.Color = ENEMY_FILL
                 end
 
                 local pos, visible = Camera:WorldToViewportPoint(char.HumanoidRootPart.Position)
@@ -114,6 +137,11 @@ RunService.RenderStepped:Connect(function()
                     line.To = Vector2.new(pos.X, pos.Y)
                     line.Visible = true
                 else
+                    line.Visible = false
+                end
+            else
+                local line = ESP._tracers[p]
+                if line then
                     line.Visible = false
                 end
             end
